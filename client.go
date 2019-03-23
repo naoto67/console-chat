@@ -30,23 +30,16 @@ func main() {
 		log.Fatal("dial: ", err)
 	}
 
+	defer fmt.Println("ALL EXIT")
 	defer c.Close()
 
 	done := make(chan struct{})
 	msg := make(chan string)
-	scanner := bufio.NewScanner(os.Stdin)
 
-	go func() {
-		defer close(done)
-		for {
-			scanner.Scan()
-			if err := scanner.Err(); err != nil {
-				fmt.Println("Scanner Error: ", err)
-				return
-			}
-			msg <- scanner.Text()
-		}
-	}()
+	go input(done, msg)
+
+	recv_msg := make(chan string)
+	go read_message(c, recv_msg)
 
 	for {
 		select {
@@ -59,6 +52,7 @@ func main() {
 				log.Println("read: ", err)
 				return
 			}
+		case m := <-recv_msg:
 			log.Printf("recv: %s", m)
 		// プロセスを直接切った時などに入る
 		case <-interrupt:
@@ -75,5 +69,29 @@ func main() {
 			}
 			return
 		}
+	}
+}
+
+func input(done chan<- struct{}, msg chan<- string) {
+	scanner := bufio.NewScanner(os.Stdin)
+	defer close(done)
+	for {
+		scanner.Scan()
+		if err := scanner.Err(); err != nil {
+			fmt.Println("Scanner Error: ", err)
+			break
+		}
+		msg <- scanner.Text()
+	}
+}
+
+func read_message(c *websocket.Conn, recv_msg chan<- string) {
+	for {
+		_, msg, err := c.ReadMessage()
+		if err != nil {
+			log.Println("Error: ", err)
+			break
+		}
+		recv_msg <- string(msg)
 	}
 }
