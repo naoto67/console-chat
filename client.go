@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"flag"
+	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -31,33 +33,34 @@ func main() {
 	defer c.Close()
 
 	done := make(chan struct{})
+	msg := make(chan string)
+	scanner := bufio.NewScanner(os.Stdin)
 
 	go func() {
 		defer close(done)
 		for {
-			_, message, err := c.ReadMessage()
-			if err != nil {
-				log.Println("read: ", err)
+			scanner.Scan()
+			if err := scanner.Err(); err != nil {
+				fmt.Println("Scanner Error: ", err)
 				return
 			}
-			log.Printf("recv: %s", message)
+			msg <- scanner.Text()
 		}
 	}()
-
-	// ticker := time.NewTicker(time.Second)
-	// defer ticker.Stop()
 
 	for {
 		select {
 		case <-done:
+			close(msg)
 			return
-		// case t := <-ticker.C:
-		//		err := c.WriteMessage(websocket.TextMessage, []byte(t.String()))
-		//		if err != nil {
-		//			log.Println("write: ", err)
-		//			return
-		//		}
-		// case msg
+		case m := <-msg:
+			err := c.WriteMessage(websocket.TextMessage, []byte(m))
+			if err != nil {
+				log.Println("read: ", err)
+				return
+			}
+			log.Printf("recv: %s", m)
+		// プロセスを直接切った時などに入る
 		case <-interrupt:
 			log.Println("interrupt")
 			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
