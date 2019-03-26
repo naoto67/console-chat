@@ -33,9 +33,21 @@ func echo(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type AnyHandler struct {
+	array []string
+}
+
+func (a *AnyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	a.array = append(a.array, "aaa")
+	log.Println(a)
+	log.Printf("%T", a)
+}
+
 func main() {
+	anyHandler := &AnyHandler{}
 	flag.Parse()
 	log.SetFlags(0)
 	http.HandleFunc("/echo", echo)
+	http.Handle("/sample", anyHandler)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
