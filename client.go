@@ -1,6 +1,7 @@
 package main
 
 import (
+	"./message"
 	"bufio"
 	"flag"
 	"fmt"
@@ -38,7 +39,7 @@ func main() {
 
 	go input(done, msg)
 
-	recv_msg := make(chan string)
+	recv_msg := make(chan message.Message)
 	go read_message(c, recv_msg)
 
 	for {
@@ -47,13 +48,18 @@ func main() {
 			close(msg)
 			return
 		case m := <-msg:
-			err := c.WriteMessage(websocket.TextMessage, []byte(m))
+			// err := c.WriteMessage(websocket.TextMessage, []byte(m))
+			msg := message.Message{
+				Name:    "sample",
+				Message: string(m),
+			}
+			err := c.WriteJSON(msg)
 			if err != nil {
 				log.Println("read: ", err)
 				return
 			}
 		case m := <-recv_msg:
-			log.Printf("recv: %s", m)
+			fmt.Println(m)
 		// プロセスを直接切った時などに入る
 		case <-interrupt:
 			log.Println("interrupt")
@@ -85,13 +91,14 @@ func input(done chan<- struct{}, msg chan<- string) {
 	}
 }
 
-func read_message(c *websocket.Conn, recv_msg chan<- string) {
+func read_message(c *websocket.Conn, recv_msg chan<- message.Message) {
+	var msg message.Message
 	for {
-		_, msg, err := c.ReadMessage()
+		err := c.ReadJSON(&msg)
 		if err != nil {
 			log.Println("Error: ", err)
 			break
 		}
-		recv_msg <- string(msg)
+		recv_msg <- msg
 	}
 }
