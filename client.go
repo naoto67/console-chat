@@ -1,7 +1,7 @@
 package main
 
 import (
-	"./message"
+	"./socket"
 	"bufio"
 	"flag"
 	"fmt"
@@ -39,9 +39,10 @@ func main() {
 
 	go input(done, msg)
 
-	recv_msg := make(chan message.Message)
+	recv_msg := make(chan socket.Message)
 	go read_message(c, recv_msg)
 
+	client := socket.InitClient()
 	for {
 		select {
 		case <-done:
@@ -49,11 +50,8 @@ func main() {
 			return
 		case m := <-msg:
 			// err := c.WriteMessage(websocket.TextMessage, []byte(m))
-			msg := message.Message{
-				Name:    "sample",
-				Message: string(m),
-			}
-			err := c.WriteJSON(msg)
+			client.Message = string(m)
+			err := c.WriteJSON(client)
 			if err != nil {
 				log.Println("read: ", err)
 				return
@@ -91,8 +89,8 @@ func input(done chan<- struct{}, msg chan<- string) {
 	}
 }
 
-func read_message(c *websocket.Conn, recv_msg chan<- message.Message) {
-	var msg message.Message
+func read_message(c *websocket.Conn, recv_msg chan<- socket.Message) {
+	var msg socket.Message
 	for {
 		err := c.ReadJSON(&msg)
 		if err != nil {

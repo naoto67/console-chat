@@ -1,7 +1,7 @@
 package main
 
 import (
-	"./message"
+	"./socket"
 	"flag"
 	"github.com/gorilla/websocket"
 	"log"
@@ -12,7 +12,7 @@ var addr = flag.String("addr", "localhost:8080", "http service address")
 
 var upgrader = websocket.Upgrader{}
 
-func distribute_message(ws *websockets, m message.Message) {
+func distribute_message(ws *websockets, m socket.Message) {
 	for _, websocket := range ws.connections {
 		err := websocket.conn.WriteJSON(m)
 		if err != nil {
@@ -40,7 +40,7 @@ func (ws *websockets) json(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
-	var m message.Message
+	var m socket.Message
 	for {
 		err := conn.conn.ReadJSON(&m)
 		if err != nil {
