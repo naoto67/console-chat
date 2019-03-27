@@ -53,11 +53,11 @@ func main() {
 			client.Message = string(m)
 			err := c.WriteJSON(client)
 			if err != nil {
-				log.Println("read: ", err)
+				log.Println("read error: ", err)
 				return
 			}
 		case m := <-recv_msg:
-			fmt.Println(m)
+			log.Printf("%s: %s", m.Name, m.Message)
 		// プロセスを直接切った時などに入る
 		case <-interrupt:
 			log.Println("interrupt")

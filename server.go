@@ -48,7 +48,7 @@ func (ws *websockets) json(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		distribute_message(ws, m)
-		log.Printf("recv: %s %s", m.Name, m.Message)
+		log.Printf("%s: %s", m.Name, m.Message)
 	}
 }
 
