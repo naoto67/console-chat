@@ -2,10 +2,14 @@ package main
 
 import (
 	"./socket"
+
 	"flag"
-	"github.com/gorilla/websocket"
+	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/websocket"
+	"github.com/rs/xid"
 )
 
 var addr = flag.String("addr", "localhost:8080", "http service address")
@@ -28,11 +32,14 @@ type websockets struct {
 type connection struct {
 	conn *websocket.Conn
 	name string
+	id   string
 }
 
 func (ws *websockets) json(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
-	conn := connection{conn: c, name: "unchi"}
+	guid := xid.New()
+	conn := connection{conn: c, id: guid.String()}
+	fmt.Println(conn)
 	ws.connections = append(ws.connections, conn)
 	if err != nil {
 		log.Println("upgrade: ", err)
@@ -44,12 +51,27 @@ func (ws *websockets) json(w http.ResponseWriter, r *http.Request) {
 	for {
 		err := conn.conn.ReadJSON(&m)
 		if err != nil {
+			// wsのconnectionsから削除
+			ws.remove(conn.id)
 			log.Println("read: ", err)
+			// log.Println(len(ws.connections))
 			break
 		}
+		conn.name = m.Name
 		distribute_message(ws, m)
 		log.Printf("%s: %s", m.Name, m.Message)
 	}
+}
+
+func (ws *websockets) remove(id string) {
+	var index int
+	for i, v := range ws.connections {
+		if v.id == id {
+			index = i
+			break
+		}
+	}
+	ws.connections = append(ws.connections[:index], ws.connections[(index+1):]...)
 }
 
 func main() {
