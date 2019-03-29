@@ -16,6 +16,7 @@ var addr = flag.String("addr", "localhost:8080", "http service address")
 
 var upgrader = websocket.Upgrader{}
 
+// 全てのconnectionにメッセージを配布
 func distribute_message(ws *websockets, m socket.Message) {
 	for _, websocket := range ws.connections {
 		err := websocket.conn.WriteJSON(m)
@@ -36,10 +37,10 @@ type connection struct {
 }
 
 func (ws *websockets) json(w http.ResponseWriter, r *http.Request) {
+	var m socket.Message
 	c, err := upgrader.Upgrade(w, r, nil)
 	guid := xid.New()
 	conn := connection{conn: c, id: guid.String()}
-	fmt.Println(conn)
 	ws.connections = append(ws.connections, conn)
 	if err != nil {
 		log.Println("upgrade: ", err)
@@ -47,7 +48,6 @@ func (ws *websockets) json(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
-	var m socket.Message
 	for {
 		err := conn.conn.ReadJSON(&m)
 		if err != nil {
@@ -63,6 +63,7 @@ func (ws *websockets) json(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// websocketsのconnectionsから任意のidを持つconnectionを削除
 func (ws *websockets) remove(id string) {
 	var index int
 	for i, v := range ws.connections {

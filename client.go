@@ -18,15 +18,20 @@ import (
 var addr = flag.String("addr", "localhost:8080", "http service address")
 
 func main() {
-	flag.Parse()
-	log.SetFlags(0)
-
+	done := make(chan struct{})
+	msg := make(chan string)
+	recv_msg := make(chan socket.Message)
+	client := socket.InitClient()
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
+
+	flag.Parse()
+	log.SetFlags(0)
 
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/ws"}
 	log.Printf("connection to %s", u.String())
 
+	// 上記のurl uに接続
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		log.Fatal("dial: ", err)
@@ -35,22 +40,18 @@ func main() {
 	defer fmt.Println("ALL EXIT")
 	defer c.Close()
 
-	done := make(chan struct{})
-	msg := make(chan string)
-
+	// コマンド入力
 	go input(done, msg)
-
-	recv_msg := make(chan socket.Message)
+	// serverからのメッセージ取得
 	go read_message(c, recv_msg)
 
-	client := socket.InitClient()
 	for {
 		select {
 		case <-done:
 			close(msg)
 			return
+		// message取得
 		case m := <-msg:
-			// err := c.WriteMessage(websocket.TextMessage, []byte(m))
 			client.Message = string(m)
 			err := c.WriteJSON(client)
 			if err != nil {
@@ -70,7 +71,6 @@ func main() {
 
 			select {
 			case <-done:
-			case <-time.After(time.Second):
 			}
 			return
 		}
